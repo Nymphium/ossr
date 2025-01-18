@@ -4,15 +4,25 @@ on:
   [pull_request, push]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tree
         uses: actions/checkout@v3
       - uses: DeterminateSystems/flake-checker-action@main
       - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            cores = 0
+            max-jobs = auto
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - run: nix develop -c true
+      - run: |
+          nix fmt $(git ls-files **/*.nix)
+          git diff --exit-code
+      - run: |
+          nix develop -c ocamlformat --check $(git ls-files **/*.ml)
+          git diff --exit-code
       - name: Run tests
         run: |
           nix develop -c dune test
