@@ -17,6 +17,5 @@ depends: [
   "liquid_ml"
   "yaml"
   "ppx_deriving"
-  "ppx_inline_test" {with-test}
-  "ppx_assert" {with-test}
+  "alcotest" {with-test}
 ]

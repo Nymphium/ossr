@@ -32,7 +32,7 @@
         };
         on = opam-nix.lib.${system};
         src = ./.;
-        localNames =
+        localPackages =
           with builtins;
           filter (f: !isNull f) (
             map (
@@ -44,42 +44,43 @@
             ) (attrNames (readDir src))
           );
 
-        localPackagesQuery =
-          with builtins;
-          listToAttrs (
-            map (p: {
-              name = p;
-              value = "*";
-            }) localNames
-          );
-
         devPackagesQuery = {
           ocaml-lsp-server = "*";
           utop = "*";
         };
 
-        query =
-          {
-            ocaml-system = "*";
-            ocamlformat = pkgs.callPackage ./nix/ocamlformat.nix { };
-          }
-          // devPackagesQuery
-          // localPackagesQuery;
+        scope =
+          let
+            localPackagesQuery =
+              with builtins;
+              listToAttrs (
+                map (p: {
+                  name = p;
+                  value = "*";
+                }) localPackages
+              );
+            query =
+              {
+                ocaml-system = "*";
+                ocamlformat = pkgs.callPackage ./nix/ocamlformat.nix { };
+              }
+              // devPackagesQuery
+              // localPackagesQuery;
+          in
+          on.buildOpamProject' {
+            inherit pkgs;
+            resolveArgs = {
+              with-test = true;
+              with-doc = true;
+            };
+          } src query;
 
-        scope = on.buildOpamProject' {
-          inherit pkgs;
-          resolveArgs = {
-            with-test = true;
-            with-doc = true;
-          };
-        } src query;
-
-        devPackages = builtins.attrValues (pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scope);
+        devPackages = with builtins; attrValues (pkgs.lib.getAttrs (attrNames devPackagesQuery) scope);
         formatter = pkgs.nixfmt-rfc-style;
 
         devShells = rec {
           ci = pkgs.mkShell {
-            inputsFrom = builtins.map (p: scope.${p}) localNames;
+            inputsFrom = builtins.map (p: scope.${p}) localPackages;
             packages = [
               formatter
               scope.ocamlformat
@@ -100,7 +101,7 @@
             map (p: {
               name = p;
               value = scope.${p};
-            }) localNames
+            }) localPackages
           );
 
         inherit devShells;
