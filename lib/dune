@@ -1,0 +1,8 @@
+(include_subdirs qualified)
+
+(library
+ (name lib)
+ (wrapped false)
+ (libraries cohttp-eio logs.fmt magic-mime cmarkit liquid_ml yaml)
+ (preprocess
+  (pps ppx_deriving.std)))
