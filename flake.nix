@@ -27,7 +27,9 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+        };
         on = opam-nix.lib.${system};
         src = ./.;
         localNames =
@@ -54,52 +56,38 @@
         devPackagesQuery = {
           ocaml-lsp-server = "*";
           utop = "*";
-          ocamlformat = pkgs.callPackage ./nix/ocamlformat.nix { ocamlformat = "${src}/.ocamlformat"; };
         };
 
         query =
-          devPackagesQuery
-          // localPackagesQuery
-          // {
+          {
             ocaml-system = "*";
-          };
+            ocamlformat = pkgs.callPackage ./nix/ocamlformat.nix { };
+          }
+          // devPackagesQuery
+          // localPackagesQuery;
 
-        overlay =
-          self: super:
-          with builtins;
-          let
-            super' = mapAttrs (
-              p: _:
-              if hasAttr "passthru" super.${p} && hasAttr "pkgdef" super.${p}.passthru then
-                super.${p}.overrideAttrs (_: {
-                  opam__with_test = "false";
-                  opam__with_doc = "false";
-                })
-              else
-                super.${p}
-            ) super;
-            local' = mapAttrs (
-              p: _:
-              super.${p}.overrideAttrs (_: {
-                doNixSupport = false;
-              })
-            ) localPackagesQuery;
-          in
-          super' // local';
-        scope =
-          let
-            scp = on.buildOpamProject' {
-              inherit pkgs;
-              resolveArgs = {
-                with-test = true;
-                with-doc = true;
-              };
-            } src query;
-          in
-          scp.overrideScope overlay;
+        scope = on.buildOpamProject' {
+          inherit pkgs;
+          resolveArgs = {
+            with-test = true;
+            with-doc = true;
+          };
+        } src query;
 
         devPackages = builtins.attrValues (pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scope);
         formatter = pkgs.nixfmt-rfc-style;
+
+        devShells = rec {
+          ci = pkgs.mkShell {
+            inputsFrom = builtins.map (p: scope.${p}) localNames;
+            packages = [ formatter ];
+          };
+          default = pkgs.mkShell {
+            inputsFrom = [ ci ];
+            buildInputs = devPackages ++ [ pkgs.nil ];
+          };
+        };
+
       in
       {
         legacyPackages = pkgs;
@@ -112,13 +100,7 @@
             }) localNames
           );
 
-        devShells.default = pkgs.mkShell {
-          inputsFrom = builtins.map (p: scope.${p}) localNames;
-          buildInputs = devPackages ++ [
-            pkgs.nil
-            formatter
-          ];
-        };
+        inherit devShells;
         inherit formatter;
       }
     );

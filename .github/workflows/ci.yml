@@ -16,13 +16,13 @@ jobs:
             cores = 0
             max-jobs = auto
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: nix develop -c true
+      - run: nix develop .#ci -c true
       - run: |
           nix fmt $(git ls-files **/*.nix)
           git diff --exit-code
       - run: |
-          nix develop -c ocamlformat --check $(git ls-files **/*.ml)
+          nix develop .#ci -c ocamlformat --check $(git ls-files **/*.ml)
           git diff --exit-code
       - name: Run tests
         run: |
-          nix develop -c dune test
+          nix develop .#ci -c dune test
