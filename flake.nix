@@ -80,7 +80,10 @@
         devShells = rec {
           ci = pkgs.mkShell {
             inputsFrom = builtins.map (p: scope.${p}) localNames;
-            packages = [ formatter ];
+            packages = [
+              formatter
+              scope.ocamlformat
+            ];
           };
           default = pkgs.mkShell {
             inputsFrom = [ ci ];
