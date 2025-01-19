@@ -13,7 +13,8 @@ let extract_front_matter content : (Yaml.value * string, Error.t) result =
   let lines = String.split_on_char '\n' content in
   let metadata, content = aux [] lines in
   match String.concat "\n" metadata |> Yaml.of_string with
-  | Ok ((`O _ | `Null) as metadata) -> Result.ok (metadata, String.concat "\n" content)
+  | Ok ((`O _ | `Null) as metadata) ->
+    Result.ok (metadata, String.(trim @@ concat "\n" content))
   | Ok _ ->
     Result.error @@ Error.String "Invalid front matter: topl evel must be an object"
   | Error (`Msg err) -> Result.error @@ Error.String err
@@ -33,14 +34,8 @@ let of_string ~context content =
   let open Let.Result in
   let@ metadata, content = extract_front_matter content in
   let context =
-    let merge _ lhs rhs =
-      match lhs, rhs with
-      | Some lhs, None -> Some lhs
-      | _, Some rhs -> Some rhs
-      | _ -> None
-    in
     let ctx = Liquid.Context.of_yaml metadata in
-    Liquid_ml.Liquid.Ctx.merge merge context ctx
+    Liquid.Context.merge_naive context ctx
   in
   Result.map Cmarkit.Doc.of_string (Liquid.apply ~context content)
 ;;

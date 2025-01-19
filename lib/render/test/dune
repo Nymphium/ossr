@@ -3,3 +3,8 @@
 (test
  (name render_test)
  (libraries lib alcotest))
+
+(rule
+ (aliases runtest)
+ (action
+  (write-file test.liquid hello)))

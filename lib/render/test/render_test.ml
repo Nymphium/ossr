@@ -25,6 +25,22 @@ let () =
                 ~msg:"front matter"
                 ~expected:(Ok (`Null, ""))
                 ~actual )
+        ; ( "ok"
+          , `Quick
+          , fun () ->
+              let text =
+                {|
+---
+value: 1
+---
+                |}
+              in
+              let actual = Render.Markdown.extract_front_matter text in
+              check'
+                (result (tuple2 yaml string) error)
+                ~msg:"front matter"
+                ~expected:(Ok (`O [ "value", `Float 1.0 ], ""))
+                ~actual )
         ] )
     ; ( "convert"
       , [ ( "with context"
@@ -98,6 +114,13 @@ hello, {{ name | upcase }}
                 ~msg:"liquid"
                 ~expected:(Ok "hello, WORLD")
                 ~actual )
+        ; ( "include"
+          , `Quick
+          , fun () ->
+              let text = {| {% render "test" %} |} in
+              let context = Liquid.Ctx.empty in
+              let actual = Render.render ~context text in
+              check' (result string error) ~msg:"liquid" ~expected:(Ok "hello") ~actual )
         ] )
     ]
 ;;

@@ -13,7 +13,9 @@ let[@tmc] rec of_yaml : Yaml.value -> Liquid.value =
 
 let apply ~context content =
   let open Liquid in
-  let settings = Settings.make ~context () in
+  let settings =
+    Settings.make ~log_policy:Settings.Verbose ~error_policy:Settings.Strict ~context ()
+  in
   try render_text ~settings content |> Result.ok with
   | exn -> Result.error @@ Error.Exn exn
 ;;
@@ -28,5 +30,15 @@ module Context = struct
     function
     | `O metadata -> Liquid.Ctx.of_list @@ aux [] metadata
     | _ -> Liquid.Ctx.empty
+  ;;
+
+  let merge_naive =
+    let merge _ lhs rhs =
+      match lhs, rhs with
+      | Some lhs, None -> Some lhs
+      | _, Some rhs -> Some rhs
+      | _ -> None
+    in
+    fun l r -> Liquid_ml.Liquid.Ctx.merge merge l r
   ;;
 end
